@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, GraduationCap, LogOut, Award } from 'lucide-react';
+import { BookOpen, GraduationCap, LogOut, Award, UserPlus } from 'lucide-react';
 import './index.css';
 
 const API_URL = 'http://localhost:5000/api';
@@ -33,26 +33,36 @@ export default function StudentResultManagement() {
               <h1 className="text-2xl font-bold">Student Result Management</h1>
             </div>
 
-            {!token && (
-              <div className="flex space-x-4">
-                <button
-                  onClick={() => setMode('student')}
-                  className={`px-4 py-2 rounded-lg transition ${
-                    mode === 'student' ? 'bg-white text-indigo-600' : 'bg-indigo-500 hover:bg-indigo-400'
-                  }`}
-                >
-                  Student Portal
-                </button>
-                <button
-                  onClick={() => setMode('teacher')}
-                  className={`px-4 py-2 rounded-lg transition ${
-                    mode === 'teacher' ? 'bg-white text-indigo-600' : 'bg-indigo-500 hover:bg-indigo-400'
-                  }`}
-                >
-                  Teacher Portal
-                </button>
-              </div>
-            )}
+            <div className="flex space-x-4">
+              <button
+                onClick={() => setMode('student')}
+                className={`px-4 py-2 rounded-lg transition ${
+                  mode === 'student' ? 'bg-white text-indigo-600' : 'bg-indigo-500 hover:bg-indigo-400'
+                }`}
+              >
+                Student Portal
+              </button>
+              {!token && (
+                <>
+                  <button
+                    onClick={() => setMode('teacher')}
+                    className={`px-4 py-2 rounded-lg transition ${
+                      mode === 'teacher' ? 'bg-white text-indigo-600' : 'bg-indigo-500 hover:bg-indigo-400'
+                    }`}
+                  >
+                    Teacher Portal
+                  </button>
+                  <button
+                    onClick={() => setMode('admin')}
+                    className={`px-4 py-2 rounded-lg transition ${
+                      mode === 'admin' ? 'bg-white text-indigo-600' : 'bg-indigo-500 hover:bg-indigo-400'
+                    }`}
+                  >
+                    Admin Portal
+                  </button>
+                </>
+              )}
+            </div>
 
             {token && (
               <button
@@ -74,12 +84,215 @@ export default function StudentResultManagement() {
       <main className="container mx-auto px-4 py-8">
         {mode === 'student' ? (
           <StudentPortal />
+        ) : mode === 'admin' ? (
+          <TeacherRegistration />
         ) : token ? (
           <TeacherDashboard token={token} teacherInfo={teacherInfo} />
         ) : (
           <TeacherLogin setToken={setToken} setTeacherInfo={setTeacherInfo} />
         )}
       </main>
+    </div>
+  );
+}
+
+/* ---------------- TeacherRegistration ---------------- */
+function TeacherRegistration() {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    class_id: '',
+    subject_id: ''
+  });
+  const [classes, setClasses] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchClasses();
+    fetchSubjects();
+  }, []);
+
+  const fetchClasses = async () => {
+    try {
+      const res = await fetch(`${API_URL}/classes`);
+      if (!res.ok) throw new Error('Failed to fetch classes');
+      const data = await res.json();
+      setClasses(data);
+    } catch (err) {
+      console.error('Error fetching classes:', err);
+    }
+  };
+
+  const fetchSubjects = async () => {
+    try {
+      const res = await fetch(`${API_URL}/subjects`);
+      if (!res.ok) throw new Error('Failed to fetch subjects');
+      const data = await res.json();
+      setSubjects(data);
+    } catch (err) {
+      console.error('Error fetching subjects:', err);
+    }
+  };
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const res = await fetch(`${API_URL}/teachers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to register teacher');
+      }
+
+      setMessage('Teacher registered successfully! ✓');
+      setFormData({
+        name: '',
+        email: '',
+        password: '',
+        class_id: '',
+        subject_id: ''
+      });
+    } catch (err) {
+      setMessage('Error: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="bg-white rounded-xl shadow-lg p-8">
+        <h2 className="text-3xl font-bold text-gray-800 mb-6 flex items-center">
+          <UserPlus className="mr-3 text-indigo-600" />
+          Register New Teacher
+        </h2>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Full Name
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+              placeholder="Enter teacher's full name"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email Address
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              placeholder="teacher@example.com"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Password
+            </label>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              minLength="6"
+              placeholder="Minimum 6 characters"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Assign Class
+            </label>
+            <select
+              name="class_id"
+              value={formData.class_id}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            >
+              <option value="">Choose a class</option>
+              {classes.map((cls) => (
+                <option key={cls.class_id} value={cls.class_id}>
+                  {cls.class_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Assign Subject
+            </label>
+            <select
+              name="subject_id"
+              value={formData.subject_id}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            >
+              <option value="">Choose a subject</option>
+              {subjects.map((subject) => (
+                <option key={subject?.subject_id} value={subject?.subject_id}>
+                  {subject?.subject_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {message && (
+            <div className={`px-4 py-3 rounded-lg ${
+              message.includes('Error') 
+                ? 'bg-red-50 border border-red-200 text-red-700' 
+                : 'bg-green-50 border border-green-200 text-green-700'
+            }`}>
+              {message}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition disabled:bg-gray-400 font-semibold"
+          >
+            {loading ? 'Registering...' : 'Register Teacher'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
@@ -298,7 +511,6 @@ function TeacherLogin({ setToken, setTeacherInfo }) {
       }
 
       const data = await res.json();
-      // server now returns token and teacher info (including class_id / subject_id)
       setToken(data.token);
       setTeacherInfo(data.teacher);
 
@@ -375,7 +587,6 @@ function TeacherDashboard({ token, teacherInfo }) {
 
   const fetchStudents = async () => {
     try {
-      // Use class_id directly (returned from server)
       const classId = teacherInfo.class_id || teacherInfo.classId;
       if (!classId) {
         console.warn('No class_id available in teacherInfo');
@@ -426,7 +637,6 @@ function TeacherDashboard({ token, teacherInfo }) {
       setMarksObtained('');
       setExamDate('');
       setRemarks('');
-      // optional: refresh students/results if needed
     } catch (err) {
       setMessage('Error: ' + err.message);
     } finally {

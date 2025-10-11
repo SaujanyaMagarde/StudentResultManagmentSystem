@@ -98,6 +98,15 @@ app.get('/api/classes', async (req, res) => {
   }
 });
 
+app.get('/api/subjects', async (req, res) => {
+  try {
+    const [subjects] = await pool.query('SELECT * FROM subjects ORDER BY subject_name');
+    res.json(subjects);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get students by class
 app.get('/api/students/class/:classId', verifyTeacher, async (req, res) => {
   try {
@@ -212,6 +221,65 @@ app.get('/api/teacher/info', verifyTeacher, async (req, res) => {
     res.json(teachers[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/teachers', async (req, res) => {
+  try {
+    console.log('Request body:', req.body);
+    const { name, email, password, class_id, subject_id } = req.body;
+
+    // Defensive checks
+    if (!name || !email || !password || !class_id || !subject_id) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Check if email already exists
+    const [existingTeacher] = await pool.query(
+      'SELECT teacher_id FROM teachers WHERE email = ?',
+      [email]
+    );
+
+    if (existingTeacher.length > 0) {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insert into database
+    const [result] = await pool.query(
+      'INSERT INTO teachers (name, email, password, class_id, subject_id) VALUES (?, ?, ?, ?, ?)',
+      [name, email, hashedPassword, class_id, subject_id]
+    );
+
+    // Don't send sensitive data back
+    res.status(201).json({ 
+      message: 'Teacher added successfully', 
+      teacherId: result.insertId,
+      teacher: {
+        id: result.insertId,
+        name,
+        email,
+        class_id,
+        subject_id
+      }
+    });
+  } catch (error) {
+    console.error('Error adding teacher:', error);
+    
+    // Handle specific MySQL errors
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+    
+    res.status(500).json({ error: 'Failed to add teacher' });
   }
 });
 
